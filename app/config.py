@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_cookie_name: str = "access_token"
 
+    log_dir: str = "logs"
+    log_filename: str = "study_api.log"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 

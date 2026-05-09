@@ -1,3 +1,7 @@
+logs/
+__pycache__/
+*.pyc
+.venv/
+venv/
 .env
 env/
-__pycache__/

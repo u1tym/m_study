@@ -1,12 +1,20 @@
 from __future__ import annotations
 
+import json
+import logging
+from contextlib import asynccontextmanager
 from datetime import datetime
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import JSONResponse
 from psycopg import Connection
+from starlette.responses import Response
 
 from app.auth import get_current_aid
 from app.db import get_db
+from app.logging_setup import configure_logging
+from app.middleware.api_logging import APILoggingMiddleware
 from app.schemas import (
     AnswerQuestionRequest,
     AnswerQuestionResponse,
@@ -26,7 +34,62 @@ from app.schemas import (
     UpdateQuestionRequest,
 )
 
-app = FastAPI(title="Study API", version="1.0.0")
+_api_logger = logging.getLogger("study.api")
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    configure_logging()
+    yield
+
+
+app = FastAPI(title="Study API", version="1.0.0", lifespan=_lifespan)
+app.add_middleware(APILoggingMiddleware)
+
+
+@app.exception_handler(HTTPException)
+async def _http_exception_handler(request: Request, exc: HTTPException) -> Response:
+    if exc.status_code >= 500:
+        body = getattr(request.state, "log_request_body", None)
+        _api_logger.error(
+            json.dumps(
+                {
+                    "event": "server_http_exception",
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status_code": exc.status_code,
+                    "detail": exc.detail,
+                    "request_body": body,
+                },
+                ensure_ascii=False,
+                default=str,
+            )
+        )
+    return await http_exception_handler(request, exc)
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    body = getattr(request.state, "log_request_body", None)
+    _api_logger.error(
+        json.dumps(
+            {
+                "event": "unhandled_exception",
+                "method": request.method,
+                "path": request.url.path,
+                "request_body": body,
+                "reason": str(exc),
+                "exc_type": type(exc).__name__,
+            },
+            ensure_ascii=False,
+            default=str,
+        ),
+        exc_info=exc,
+    )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Internal server error."},
+    )
 
 
 def _next_lecture_id(db: Connection, aid: int) -> int:
