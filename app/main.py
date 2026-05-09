@@ -607,10 +607,14 @@ def get_question(
 
     cur.execute(
         """
-        select id, option_type, option, image_b64
-          from study.choice
-         where aid = %s and lid = %s and qid = %s
-         order by id
+        select c.id, c.option_type, c.option, c.image_b64,
+               exists (
+                 select 1 from study.answer a
+                  where a.aid = c.aid and a.lid = c.lid and a.qid = c.qid and a.cid = c.id
+               ) as is_right
+          from study.choice c
+         where c.aid = %s and c.lid = %s and c.qid = %s
+         order by c.id
         """,
         (aid, lid, use_qid),
     )
@@ -620,6 +624,7 @@ def get_question(
             typ=row["option_type"],
             opt=row["option"],
             img=row["image_b64"],
+            is_right=bool(row["is_right"]),
         )
         for row in cur.fetchall()
     ]

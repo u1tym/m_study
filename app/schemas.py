@@ -80,6 +80,7 @@ class GetQuestionResponseChoice(BaseModel):
     typ: str | None
     opt: str | None
     img: str | None
+    is_right: bool
 
 
 class GetQuestionResponse(BaseModel):

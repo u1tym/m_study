@@ -159,7 +159,7 @@
   - `study.questions` 1件取得
   - `study.choice`を同`qid`で取得
 - **Output(JSON)**:
-  - `{"lid","ttl","pb1","im1","pb2","im2","pb3","num","opt":[{"cid","typ","opt","img"}...]}`
+  - `{"lid","ttl","pb1","im1","pb2","im2","pb3","num","opt":[{"cid","typ","opt","img","is_right"}...]}`（`is_right`: 当該選択肢が正解なら`true`）
 
 ## D系 回答
 
