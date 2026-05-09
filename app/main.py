@@ -4,6 +4,7 @@ import json
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
+from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exception_handlers import http_exception_handler
@@ -35,6 +36,67 @@ from app.schemas import (
 )
 
 _api_logger = logging.getLogger("study.api")
+
+
+def _log_db_write(
+    op: str,
+    table: str,
+    aid: int,
+    rowcount: int,
+    *,
+    expect_rowcount: int | None = None,
+    **extra: Any,
+) -> None:
+    payload: dict[str, Any] = {
+        "event": "db_write",
+        "op": op,
+        "table": table,
+        "aid": aid,
+        "rowcount": rowcount,
+        **extra,
+    }
+    line = json.dumps(payload, ensure_ascii=False, default=str)
+    if expect_rowcount is not None and rowcount != expect_rowcount:
+        _api_logger.warning(line)
+    else:
+        _api_logger.info(line)
+
+
+def _log_db_read(table: str, aid: int, rowcount: int, **extra: Any) -> None:
+    _api_logger.info(
+        json.dumps(
+            {"event": "db_read", "table": table, "aid": aid, "rowcount": rowcount, **extra},
+            ensure_ascii=False,
+            default=str,
+        )
+    )
+
+
+def _log_question_bundle_insert(aid: int, ins: dict[str, Any], expected_choices: int) -> None:
+    parts = {
+        "study.questions": ins["question_rowcount"],
+        "study.choice": ins["choice_rowcount"],
+        "study.answer": ins["answer_rowcount"],
+    }
+    line = json.dumps(
+        {
+            "event": "db_write",
+            "op": "insert",
+            "table": "study.questions_bundle",
+            "aid": aid,
+            "lid": ins["lid"],
+            "qid": ins["qid"],
+            "rowcounts_by_table": parts,
+            "expected_choices": expected_choices,
+        },
+        ensure_ascii=False,
+        default=str,
+    )
+    bad = ins["question_rowcount"] != 1 or ins["choice_rowcount"] != expected_choices
+    if bad:
+        _api_logger.warning(line)
+    else:
+        _api_logger.info(line)
 
 
 @asynccontextmanager
@@ -198,13 +260,24 @@ def create_top_lecture(
     lid = _next_lecture_id(db, aid)
     dorder = _next_lecture_order(db, aid, None)
     with db.transaction():
-        db.execute(
+        cur = db.execute(
             """
             insert into study.lectures (aid, id, pid, dorder, title, explain_type, explain, is_deleted)
             values (%s, %s, null, %s, %s, null, null, false)
             """,
             (aid, lid, dorder, body.lecture_name),
         )
+    _log_db_write(
+        "insert",
+        "study.lectures",
+        aid,
+        cur.rowcount,
+        expect_rowcount=1,
+        lid=lid,
+        dorder=dorder,
+        pid=None,
+        title=body.lecture_name,
+    )
     return ResultResponse(result=True)
 
 
@@ -223,7 +296,10 @@ def list_top_lectures(
         """,
         (aid,),
     )
-    return [LectureListItem(lid=int(row["id"]), ttl=row["title"]) for row in cur.fetchall()]
+    rows = cur.fetchall()
+    out = [LectureListItem(lid=int(row["id"]), ttl=row["title"]) for row in rows]
+    _log_db_read("study.lectures(top)", aid, len(out), lids=[int(r["id"]) for r in rows])
+    return out
 
 
 @app.post("/study/lectures/top/delete", response_model=ResultResponse)
@@ -237,6 +313,15 @@ def delete_top_lecture(
             "update study.lectures set is_deleted = true where aid = %s and id = %s",
             (aid, body.lid),
         )
+    _log_db_write(
+        "update",
+        "study.lectures",
+        aid,
+        cur.rowcount,
+        expect_rowcount=1,
+        lid=body.lid,
+        scope="top_soft_delete",
+    )
     if cur.rowcount == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lecture not found.")
     return ResultResponse(result=True)
@@ -251,13 +336,23 @@ def create_child_lecture(
     lid = _next_lecture_id(db, aid)
     dorder = _next_lecture_order(db, aid, body.parent_lid)
     with db.transaction():
-        db.execute(
+        cur = db.execute(
             """
             insert into study.lectures (aid, id, pid, dorder, title, explain_type, explain, is_deleted)
             values (%s, %s, %s, %s, %s, %s, %s, false)
             """,
             (aid, lid, body.parent_lid, dorder, body.title, body.explain_type, body.explain),
         )
+    _log_db_write(
+        "insert",
+        "study.lectures",
+        aid,
+        cur.rowcount,
+        expect_rowcount=1,
+        lid=lid,
+        dorder=dorder,
+        pid=body.parent_lid,
+    )
     return ResultResponse(result=True)
 
 
@@ -279,18 +374,29 @@ def swap_lecture_order(
     first = next(row for row in rows if int(row["id"]) == body.lid_1)
     second = next(row for row in rows if int(row["id"]) == body.lid_2)
     with db.transaction():
-        db.execute(
+        c1 = db.execute(
             "update study.lectures set dorder = -1 where aid = %s and id = %s",
             (aid, body.lid_1),
         )
-        db.execute(
+        c2 = db.execute(
             "update study.lectures set dorder = %s where aid = %s and id = %s",
             (int(first["dorder"]), aid, body.lid_2),
         )
-        db.execute(
+        c3 = db.execute(
             "update study.lectures set dorder = %s where aid = %s and id = %s",
             (int(second["dorder"]), aid, body.lid_1),
         )
+    _log_db_write(
+        "update",
+        "study.lectures",
+        aid,
+        c1.rowcount + c2.rowcount + c3.rowcount,
+        expect_rowcount=3,
+        lid_1=body.lid_1,
+        lid_2=body.lid_2,
+        scope="swap_order",
+        rowcounts=(c1.rowcount, c2.rowcount, c3.rowcount),
+    )
     return ResultResponse(result=True)
 
 
@@ -305,6 +411,15 @@ def delete_lecture(
             "update study.lectures set is_deleted = true where aid = %s and id = %s",
             (aid, body.lid),
         )
+    _log_db_write(
+        "update",
+        "study.lectures",
+        aid,
+        cur.rowcount,
+        expect_rowcount=1,
+        lid=body.lid,
+        scope="soft_delete",
+    )
     if cur.rowcount == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lecture not found.")
     return ResultResponse(result=True)
@@ -323,10 +438,10 @@ def _insert_question(
     db: Connection,
     aid: int,
     body: CreateQuestionRequest,
-) -> None:
+) -> dict[str, Any]:
     qid = _next_question_id(db, aid, body.lid)
     num_ans = sum(1 for choice in body.choices if choice.is_right)
-    db.execute(
+    cur_q = db.execute(
         """
         insert into study.questions (
           aid, lid, id, title, problem_1, image_1_b64, problem_2, image_2_b64, problem_3, num_ans, is_deleted
@@ -337,21 +452,32 @@ def _insert_question(
     )
 
     next_choice_id = _next_choice_id(db, aid, body.lid, qid)
+    choice_rc = 0
+    answer_rc = 0
     for choice in body.choices:
         cid = next_choice_id
         next_choice_id += 1
-        db.execute(
+        cur_c = db.execute(
             """
             insert into study.choice (aid, lid, qid, id, option_type, option, image_b64)
             values (%s, %s, %s, %s, %s, %s, %s)
             """,
             (aid, body.lid, qid, cid, choice.typ, choice.opt, choice.img),
         )
+        choice_rc += cur_c.rowcount
         if choice.is_right:
-            db.execute(
+            cur_a = db.execute(
                 "insert into study.answer (aid, lid, qid, cid) values (%s, %s, %s, %s)",
                 (aid, body.lid, qid, cid),
             )
+            answer_rc += cur_a.rowcount
+    return {
+        "qid": qid,
+        "question_rowcount": cur_q.rowcount,
+        "choice_rowcount": choice_rc,
+        "answer_rowcount": answer_rc,
+        "lid": body.lid,
+    }
 
 
 @app.post("/study/questions", response_model=ResultResponse)
@@ -361,7 +487,8 @@ def create_question(
     aid: int = Depends(get_current_aid),
 ) -> ResultResponse:
     with db.transaction():
-        _insert_question(db, aid, body)
+        ins = _insert_question(db, aid, body)
+    _log_question_bundle_insert(aid, ins, len(body.choices))
     return ResultResponse(result=True)
 
 
@@ -376,6 +503,16 @@ def delete_question(
             "update study.questions set is_deleted = true where aid = %s and lid = %s and id = %s",
             (aid, body.lid, body.qid),
         )
+    _log_db_write(
+        "update",
+        "study.questions",
+        aid,
+        cur.rowcount,
+        expect_rowcount=1,
+        lid=body.lid,
+        qid=body.qid,
+        scope="soft_delete",
+    )
     if cur.rowcount == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Question not found.")
     return ResultResponse(result=True)
@@ -398,11 +535,22 @@ def update_question(
         choices=body.choices,
     )
     with db.transaction():
-        db.execute(
+        cur_del = db.execute(
             "update study.questions set is_deleted = true where aid = %s and lid = %s and id = %s",
             (aid, body.lid, body.qid),
         )
-        _insert_question(db, aid, create_body)
+        ins = _insert_question(db, aid, create_body)
+    _log_db_write(
+        "update",
+        "study.questions",
+        aid,
+        cur_del.rowcount,
+        expect_rowcount=1,
+        lid=body.lid,
+        qid=body.qid,
+        scope="soft_delete_for_replace",
+    )
+    _log_question_bundle_insert(aid, ins, len(create_body.choices))
     return ResultResponse(result=True)
 
 
@@ -422,10 +570,10 @@ def list_questions(
         """,
         (aid, lid),
     )
-    return QuestionListResponse(
-        lid=lid,
-        qes=[QuestionListItem(qid=int(row["id"]), ttl=row["title"]) for row in cur.fetchall()],
-    )
+    rows = cur.fetchall()
+    qes = [QuestionListItem(qid=int(row["id"]), ttl=row["title"]) for row in rows]
+    _log_db_read("study.questions(by_lid)", aid, len(qes), lid=lid, qids=[int(r["id"]) for r in rows])
+    return QuestionListResponse(lid=lid, qes=qes)
 
 
 @app.get("/study/questions/{lid}/{qid}", response_model=GetQuestionResponse)
@@ -514,13 +662,24 @@ def answer_question(
 
     with db.transaction():
         eid = _next_exam_id(db, aid, body.lid)
-        db.execute(
+        cur_ex = db.execute(
             """
             insert into study.exam (aid, lid, id, q_time, qid, is_right)
             values (%s, %s, %s, %s, %s, %s)
             """,
             (aid, body.lid, eid, datetime.now(), body.qid, is_right),
         )
+    _log_db_write(
+        "insert",
+        "study.exam",
+        aid,
+        cur_ex.rowcount,
+        expect_rowcount=1,
+        lid=body.lid,
+        eid=eid,
+        qid=body.qid,
+        is_right=is_right,
+    )
 
     return AnswerQuestionResponse(result=is_right, right=right)
 

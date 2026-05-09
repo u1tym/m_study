@@ -52,4 +52,6 @@ def get_current_aid(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Account not found.",
         )
-    return int(row["id"])
+    aid = int(row["id"])
+    request.state.aid = aid
+    return aid

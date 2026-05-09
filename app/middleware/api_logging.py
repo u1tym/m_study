@@ -97,6 +97,7 @@ class APILoggingMiddleware(BaseHTTPMiddleware):
             "method": request.method,
             "path": path,
             "query": dict(request.query_params),
+            "aid": getattr(request.state, "aid", None),
             "request_body": _sanitize_for_log(request.state.log_request_body),
             "status_code": response.status_code,
             "response_body": _sanitize_for_log(response_payload),
