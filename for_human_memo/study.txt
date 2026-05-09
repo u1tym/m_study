@@ -1,0 +1,18 @@
+DBはPostgreSQLで、既存で、レイアウトは以下
+
+DBの接続先は、.envで作成して。
+初期値は、
+Server: localhost
+Database: tamtdb
+Port: 5432
+Username: tamtuser
+Password: TAMTTAMT
+にして
+
+pythonで、型ヒント句付けて
+fastapiでAPIを作成して。
+
+
+APIの仕様を他の生成AIでも理解できるように、API_STUDY.mdに日本語でまとめて。
+DBの仕様を他の生成AIでも理解できるように、DB_STUDY.mdに日本語でまとめて。
+

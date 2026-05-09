@@ -1,0 +1,279 @@
+共通処理
+ JWTのusername=accounts.usernameを条件に、取得したaccounts.idをアカウントIDとする。
+ JWTの詳細はJWT_USERNAME_TECH_SPEC.mdを参照のこと
+ 
+A-1. 講義作成
+ Input
+   講義名称
+ 処理内容
+   study.lecturesにレコードを追加
+   aid          = アカウントID
+   id           = アカウントID毎に採番
+   pid          = null
+   dorder       = 今登録されているpid=nullでの最小値+1（登録がないときは最小値=0として扱う）
+   title        = Inputの講義名称
+   explain_type = null
+   explain      = null
+ Output
+   処理結果
+
+A-2. 講義一覧取得
+ Input
+   なし
+ 処理内容
+   study.lecturesを検索する
+   aid  = アカウントID
+   pid  = null
+   is_deleted = false
+   dorder順
+ Output
+   [
+     {
+       lid = <study.lecturesのid>,
+       ttl = <study.lecturesのtitle>
+     }, ...
+   ]
+
+A-3. 講義削除
+ Input
+   レクチャID
+ 処理内容
+   study.lecturesを更新する
+   aid  = アカウントID
+   id   = InputのレクチャID
+   is_deletedをtrueで更新する
+ Output
+   処理結果
+
+B-1. レクチャ追加
+ Input
+   追加先レクチャID
+   タイトル
+   内容の書式
+   内容
+ 処理内容
+   study.lecturesにレコードを追加
+   aid          = アカウントID
+   id           = アカウントID毎に採番
+   pid          = Inputの追加先レクチャID
+   dorder       = 今登録されているpidでの最小値+1（登録がないときは最小値=0として扱う）
+   title        = Inputのタイトル（なし時はnull）
+   explain_type = Inputの内容の書式（なし時はnull）
+   explain      = Inputの内容（なし時はnull）
+ Output
+   処理結果
+
+B-2. レクチャ順変更
+ Input
+   レクチャID-1
+   レクチャID-2
+ 処理内容
+   study.lecturesのレコードを更新する
+   aid = アカウントID
+   id  = レクチャID-1、レクチャID-2
+   それぞれのdorderを入れ替える
+ Output
+   処理結果
+
+B-3. レクチャ削除
+ Input
+   レクチャID
+ 処理内容
+   study.lecturesのレコードを更新する
+   aid = アカウントID
+   id  = InputのレクチャID
+   is_deletedをtrueで更新する
+ Output
+   処理結果
+
+B-4. レクチャ情報取得
+ Input
+   レクチャID（講義のID）
+ 処理内容
+   study.lectures
+   1) aid, id=InputのレクチャID, pid=null, is_deleted=false を条件に検索する。
+   2) aid, pid=(1)で取得したid, is_deleted=false を条件に検索する。
+   3) aid, pid=(2)で取得したid, is_deleted=false を条件に検索する。
+   ...
+   を繰り返して検索する。
+ Output
+   検索した結果を以下の構造のJSONデータで返す
+   {
+     lid=<study.lecturesのid>,
+     ttl=<study.lecturesのtitle>,
+     typ=<study.lecturesのexplain_type>,
+     exp=<study.lecturesのexplain>,
+     chd=[
+       {
+         lid=<>,
+         ttl=<>,
+         typ=<>,
+         exp=<>,
+         chd=[
+           ...
+         ]
+       }, ...
+     ]
+   }
+
+C-1. 設問作成
+ Input
+   追加先レクチャID
+   タイトル
+   設問文章1
+   画像1(base64)
+   設問文章2
+   画像2(base64)
+   設問文章3
+   選択肢=[
+     {選択肢文字列タイプ, 選択肢文字列, 画像(base64), 正解フラグ}, ...
+   ]
+ 処理内容
+   study.questions、study.choice、study.answerにレコードを追加
+   study.questions
+     aid         = アカウントID
+     lid         = Inputの追加先レクチャID
+     id          = aid, lid毎に採番
+     title       = Inputのタイトル（なし時はnull）
+     problem_1   = Inputの設問文章1（なし時はnull）
+     image_1_b64 = Inputの画像1（なし時はnull）
+     problem_2   = Inputの設問文章2（なし時はnull）
+     image_2_b64 = Inputの画像2（なし時はnull）
+     problem_3   = Inputの設問文章3（なし時はnull）
+     num_ans     = Inputの選択肢のうち、正解フラグがtrueの数
+  study.choice
+     Inputの選択肢の数分、レコードを登録する。
+     aid         = アカウントID
+     lid         = Inputの追加先レクチャID
+     qid         = study.questionsで採番したid
+     id          = aid, lid, qid毎に採番
+     option_type = Inputの選択肢の選択肢文字列タイプ（なし時はnull）
+     option      = Inputの選択肢の選択肢文字列（なし時はnull）
+     image_64    = Inputの選択肢の画像
+  study.answer
+     Inputの選択肢のうち、正解フラグがtrueのものを登録する
+     aid         = アカウントID
+     lid         = Inputの追加先レクチャID
+     qid         = study.questionsで採番したid
+     cid         = study.choiceで採番したid
+ Output
+   処理結果
+
+C-2. 設問削除
+ Input
+   レクチャID
+   設問ID
+ 処理内容
+   study.questionsを更新する。
+   aid = アカウントID
+   lid = InputのレクチャID
+   id  = Inputの設問ID
+   is_deletedをtrueで更新する
+ Output
+   処理結果
+
+C-3. 設問更新
+ Input
+   レクチャID
+   設問ID
+   タイトル
+   設問文章1
+   画像1(base64)
+   設問文章2
+   画像2(base64)
+   設問文章3
+   選択肢=[
+     {選択肢文字列タイプ, 選択肢文字列, 画像(base64), 正解フラグ}, ...
+   ]
+ 処理内容
+   設問を削除した後、設問作成することで、更新する。
+ Output
+   処理結果
+
+C-4. 設問一覧取得
+ Input
+   レクチャID
+ 処理内容
+   study.questionsを検索する
+   aid  = アカウントID
+   lid  = InputのレクチャID
+   is_deleted = false
+ Output
+   {
+     lid=<レクチャID>,
+     qes=[
+       {
+         qid=<study.questionsのid>,
+         ttl=<study.questionsのtitle>
+       }, ...
+     ]
+   }
+
+C-5. 設問取得
+ Input
+   レクチャID
+   設問ID
+ 処理内容
+   study.questions、study.choiceを検索する。
+   設問IDが負数の場合は、study.questionをaid,lidを条件にidをランダムに取得する
+   設問IDが1以上の場合には、指定された値を使用する。
+   
+   study.questions
+     aid = アカウントID
+     lid = InputのレクチャID
+     id  = Inputの設問IDが1以上の場合、指定された値
+           負数の場合、存在する値のなかからランダムに取得
+     is_deleted = false
+
+   study.choice
+     aid = アカウントID
+     lid = InputのレクチャID
+     qid = study.questionsの検索で使用したid
+ Output
+   {
+     lid = <study.questionsのレクチャID>,
+     ttl = <study.questionsのタイトル>,
+     pb1 = <study.questionsの設問_Part_1>,
+     im1 = <study.questionsの画像_1(Base64)>,
+     pb2 = <study.questionsの設問_Part_2>,
+     im2 = <study.questionsの画像_2(Base64)>,
+     pb3 = <study.questionsの設問_Part_2>,
+     num = <study.questionsの正答数>,
+     opt = [
+       {
+         cid = <study.choiceのid>,
+         typ = <study.choiceの選択肢文字列のタイプ>,
+         opt = <study.choiceの選択肢文字列>,
+         img = <study.choiceの画像>
+       }, ...
+     ]
+   }
+
+D-1. 回答
+ Input
+   レクチャID
+   設問ID
+   回答（1個以上の選択肢ID）
+ 処理内容
+   study.answerを検索する
+   aid  = アカウントID
+   lid  = InputのレクチャID
+   qid  = Inputの設問ID
+   取得したcidの個数、値が、Inputの回答と一致する場合、正解とする
+   不一致の場合、不正解とする。
+   
+   study.examを更新する
+   aid      = アカウントID
+   lid      = InputのレクチャID
+   id       = aid, lid毎に採番
+   q_time   = 現在時刻
+   qid      = Inputの設問ID
+   is_right = 前述で正解の場合true、不正解の場合false
+ Output
+   {
+     result = <正解の場合true、不正解の場合false>,
+     right = [
+       <正解のcid>, ...
+     ]
+   }
+
