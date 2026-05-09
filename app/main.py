@@ -259,14 +259,13 @@ def create_top_lecture(
 ) -> ResultResponse:
     lid = _next_lecture_id(db, aid)
     dorder = _next_lecture_order(db, aid, None)
-    with db.transaction():
-        cur = db.execute(
-            """
-            insert into study.lectures (aid, id, pid, dorder, title, explain_type, explain, is_deleted)
-            values (%s, %s, null, %s, %s, null, null, false)
-            """,
-            (aid, lid, dorder, body.lecture_name),
-        )
+    cur = db.execute(
+        """
+        insert into study.lectures (aid, id, pid, dorder, title, explain_type, explain, is_deleted)
+        values (%s, %s, null, %s, %s, null, null, false)
+        """,
+        (aid, lid, dorder, body.lecture_name),
+    )
     _log_db_write(
         "insert",
         "study.lectures",
@@ -308,11 +307,10 @@ def delete_top_lecture(
     db: Connection = Depends(get_db),
     aid: int = Depends(get_current_aid),
 ) -> ResultResponse:
-    with db.transaction():
-        cur = db.execute(
-            "update study.lectures set is_deleted = true where aid = %s and id = %s",
-            (aid, body.lid),
-        )
+    cur = db.execute(
+        "update study.lectures set is_deleted = true where aid = %s and id = %s",
+        (aid, body.lid),
+    )
     _log_db_write(
         "update",
         "study.lectures",
@@ -335,14 +333,13 @@ def create_child_lecture(
 ) -> ResultResponse:
     lid = _next_lecture_id(db, aid)
     dorder = _next_lecture_order(db, aid, body.parent_lid)
-    with db.transaction():
-        cur = db.execute(
-            """
-            insert into study.lectures (aid, id, pid, dorder, title, explain_type, explain, is_deleted)
-            values (%s, %s, %s, %s, %s, %s, %s, false)
-            """,
-            (aid, lid, body.parent_lid, dorder, body.title, body.explain_type, body.explain),
-        )
+    cur = db.execute(
+        """
+        insert into study.lectures (aid, id, pid, dorder, title, explain_type, explain, is_deleted)
+        values (%s, %s, %s, %s, %s, %s, %s, false)
+        """,
+        (aid, lid, body.parent_lid, dorder, body.title, body.explain_type, body.explain),
+    )
     _log_db_write(
         "insert",
         "study.lectures",
@@ -373,19 +370,18 @@ def swap_lecture_order(
 
     first = next(row for row in rows if int(row["id"]) == body.lid_1)
     second = next(row for row in rows if int(row["id"]) == body.lid_2)
-    with db.transaction():
-        c1 = db.execute(
-            "update study.lectures set dorder = -1 where aid = %s and id = %s",
-            (aid, body.lid_1),
-        )
-        c2 = db.execute(
-            "update study.lectures set dorder = %s where aid = %s and id = %s",
-            (int(first["dorder"]), aid, body.lid_2),
-        )
-        c3 = db.execute(
-            "update study.lectures set dorder = %s where aid = %s and id = %s",
-            (int(second["dorder"]), aid, body.lid_1),
-        )
+    c1 = db.execute(
+        "update study.lectures set dorder = -1 where aid = %s and id = %s",
+        (aid, body.lid_1),
+    )
+    c2 = db.execute(
+        "update study.lectures set dorder = %s where aid = %s and id = %s",
+        (int(first["dorder"]), aid, body.lid_2),
+    )
+    c3 = db.execute(
+        "update study.lectures set dorder = %s where aid = %s and id = %s",
+        (int(second["dorder"]), aid, body.lid_1),
+    )
     _log_db_write(
         "update",
         "study.lectures",
@@ -406,11 +402,10 @@ def delete_lecture(
     db: Connection = Depends(get_db),
     aid: int = Depends(get_current_aid),
 ) -> ResultResponse:
-    with db.transaction():
-        cur = db.execute(
-            "update study.lectures set is_deleted = true where aid = %s and id = %s",
-            (aid, body.lid),
-        )
+    cur = db.execute(
+        "update study.lectures set is_deleted = true where aid = %s and id = %s",
+        (aid, body.lid),
+    )
     _log_db_write(
         "update",
         "study.lectures",
@@ -486,8 +481,7 @@ def create_question(
     db: Connection = Depends(get_db),
     aid: int = Depends(get_current_aid),
 ) -> ResultResponse:
-    with db.transaction():
-        ins = _insert_question(db, aid, body)
+    ins = _insert_question(db, aid, body)
     _log_question_bundle_insert(aid, ins, len(body.choices))
     return ResultResponse(result=True)
 
@@ -498,11 +492,10 @@ def delete_question(
     db: Connection = Depends(get_db),
     aid: int = Depends(get_current_aid),
 ) -> ResultResponse:
-    with db.transaction():
-        cur = db.execute(
-            "update study.questions set is_deleted = true where aid = %s and lid = %s and id = %s",
-            (aid, body.lid, body.qid),
-        )
+    cur = db.execute(
+        "update study.questions set is_deleted = true where aid = %s and lid = %s and id = %s",
+        (aid, body.lid, body.qid),
+    )
     _log_db_write(
         "update",
         "study.questions",
@@ -534,12 +527,11 @@ def update_question(
         pb3=body.pb3,
         choices=body.choices,
     )
-    with db.transaction():
-        cur_del = db.execute(
-            "update study.questions set is_deleted = true where aid = %s and lid = %s and id = %s",
-            (aid, body.lid, body.qid),
-        )
-        ins = _insert_question(db, aid, create_body)
+    cur_del = db.execute(
+        "update study.questions set is_deleted = true where aid = %s and lid = %s and id = %s",
+        (aid, body.lid, body.qid),
+    )
+    ins = _insert_question(db, aid, create_body)
     _log_db_write(
         "update",
         "study.questions",
@@ -660,15 +652,14 @@ def answer_question(
     answer_sorted = sorted(set(body.answer))
     is_right = answer_sorted == right
 
-    with db.transaction():
-        eid = _next_exam_id(db, aid, body.lid)
-        cur_ex = db.execute(
-            """
-            insert into study.exam (aid, lid, id, q_time, qid, is_right)
-            values (%s, %s, %s, %s, %s, %s)
-            """,
-            (aid, body.lid, eid, datetime.now(), body.qid, is_right),
-        )
+    eid = _next_exam_id(db, aid, body.lid)
+    cur_ex = db.execute(
+        """
+        insert into study.exam (aid, lid, id, q_time, qid, is_right)
+        values (%s, %s, %s, %s, %s, %s)
+        """,
+        (aid, body.lid, eid, datetime.now(), body.qid, is_right),
+    )
     _log_db_write(
         "insert",
         "study.exam",

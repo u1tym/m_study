@@ -20,6 +20,11 @@ def build_dsn() -> str:
 def get_db() -> Generator[Connection[dict], None, None]:
     conn = connect(build_dsn(), row_factory=dict_row)
     try:
+        conn.execute("BEGIN")
         yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
