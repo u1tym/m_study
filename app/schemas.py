@@ -53,6 +53,9 @@ class CreateQuestionRequest(BaseModel):
     pb2: str | None = None
     im2: str | None = None
     pb3: str | None = None
+    pb1_type: str = Field(default="plane", description="設問 Part1 のタイプ: plane / tex")
+    pb2_type: str | None = Field(default=None, description="設問 Part2 のタイプ: plane / tex")
+    pb3_type: str | None = Field(default=None, description="設問 Part3 のタイプ: plane / tex")
     choices: list[ChoiceInput] = Field(min_length=1)
 
 
@@ -91,6 +94,9 @@ class GetQuestionResponse(BaseModel):
     pb2: str | None
     im2: str | None
     pb3: str | None
+    pb1_type: str
+    pb2_type: str | None = None
+    pb3_type: str | None = None
     num: int
     opt: list[GetQuestionResponseChoice]
 

@@ -108,6 +108,9 @@
   - `pb2`(string|null)
   - `im2`(string|null, base64)
   - `pb3`(string|null)
+  - `pb1_type`(string, optional, default `plane`): 設問 Part1 のタイプ。`plane` または `tex`（DB: `problem_1_type`）
+  - `pb2_type`(string|null, optional): 設問 Part2 のタイプ。`plane` / `tex` または省略・null（DB: `problem_2_type`）
+  - `pb3_type`(string|null, optional): 設問 Part3 のタイプ。`plane` / `tex` または省略・null（DB: `problem_3_type`）
   - `choices`(array, 1件以上)
     - `typ`(string|null)
     - `opt`(string|null)
@@ -159,7 +162,7 @@
   - `study.questions` 1件取得
   - `study.choice`を同`qid`で取得
 - **Output(JSON)**:
-  - `{"lid","ttl","pb1","im1","pb2","im2","pb3","num","opt":[{"cid","typ","opt","img","is_right"}...]}`（`is_right`: 当該選択肢が正解なら`true`）
+  - `{"lid","ttl","pb1","im1","pb2","im2","pb3","pb1_type","pb2_type","pb3_type","num","opt":[{"cid","typ","opt","img","is_right"}...]}`（`pb1_type`〜`pb3_type` は DB の `problem_*_type` に対応。`is_right`: 当該選択肢が正解なら`true`）
 
 ## D系 回答
 
