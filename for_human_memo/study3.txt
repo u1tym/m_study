@@ -1,0 +1,40 @@
+DBのテーブルstudy.questionsに以下のカラムを追加しました。
+problem_1_type 設問_Part_1のタイプ(plane/tex)
+problem_2_type 設問_Part_2のタイプ(plane/tex)
+problem_3_type 設問_Part_3のタイプ(plane/tex)
+
+Table "study.questions"
+     Column     |  Type   | Collation | Nullable |    Default
+----------------+---------+-----------+----------+---------------
+ aid            | integer |           | not null |
+ lid            | integer |           | not null |
+ id             | integer |           | not null |
+ title          | text    |           |          |
+ problem_1      | text    |           | not null |
+ image_1_b64    | text    |           |          |
+ problem_2      | text    |           |          |
+ image_2_b64    | text    |           |          |
+ problem_3      | text    |           |          |
+ num_ans        | integer |           | not null |
+ is_deleted     | boolean |           | not null | false
+ problem_1_type | text    |           | not null | 'plane'::text
+ problem_2_type | text    |           |          |
+ problem_3_type | text    |           |          |
+Indexes:
+    "questions_pkey" PRIMARY KEY, btree (aid, lid, id)
+Foreign-key constraints:
+    "fk_study_question_aid_lid" FOREIGN KEY (aid, lid) REFERENCES study.lectures(aid, id)
+Referenced by:
+    TABLE "study.choice" CONSTRAINT "fk_study_choice_aid_lid_qid" FOREIGN KEY (aid, lid, qid) REFERENCES study.questions(aid, lid, id)
+    TABLE "study.exam" CONSTRAINT "fk_study_exam_aid_lid_qid" FOREIGN KEY (aid, lid, qid) REFERENCES study.questions(aid, lid, id)
+
+APIを修正してください。
+POST /study/questions
+  Inputに各項目を追加して、DBの同項目も値を登録できるように。
+POST /study/questions/update
+  Inputに各項目を追加して、DBの同項目も値を更新できるように。
+GET /study/questions/{lid}/{qid}
+  Outputに各項目を追加
+
+API_STUDY.md、DB_STUDY.mdも修正してください。
+
