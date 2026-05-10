@@ -466,6 +466,14 @@ def _insert_question(
                 (aid, body.lid, qid, cid),
             )
             answer_rc += cur_a.rowcount
+    if body.comment_type is not None:
+        db.execute(
+            """
+            insert into study.comment (aid, lid, qid, body_type, body)
+            values (%s, %s, %s, %s, %s)
+            """,
+            (aid, body.lid, qid, body.comment_type.strip(), body.comment_body),
+        )
     return {
         "qid": qid,
         "question_rowcount": cur_q.rowcount,
@@ -492,6 +500,10 @@ def delete_question(
     db: Connection = Depends(get_db),
     aid: int = Depends(get_current_aid),
 ) -> ResultResponse:
+    db.execute(
+        "delete from study.comment where aid = %s and lid = %s and qid = %s",
+        (aid, body.lid, body.qid),
+    )
     cur = db.execute(
         "update study.questions set is_deleted = true where aid = %s and lid = %s and id = %s",
         (aid, body.lid, body.qid),
@@ -525,7 +537,13 @@ def update_question(
         pb2=body.pb2,
         im2=body.im2,
         pb3=body.pb3,
+        comment_type=body.comment_type,
+        comment_body=body.comment_body,
         choices=body.choices,
+    )
+    db.execute(
+        "delete from study.comment where aid = %s and lid = %s and qid = %s",
+        (aid, body.lid, body.qid),
     )
     cur_del = db.execute(
         "update study.questions set is_deleted = true where aid = %s and lid = %s and id = %s",
@@ -629,6 +647,12 @@ def get_question(
         for row in cur.fetchall()
     ]
 
+    cur.execute(
+        "select body_type, body from study.comment where aid = %s and lid = %s and qid = %s",
+        (aid, lid, use_qid),
+    )
+    cmt = cur.fetchone()
+
     return GetQuestionResponse(
         lid=int(question["lid"]),
         ttl=question["title"],
@@ -637,6 +661,8 @@ def get_question(
         pb2=question["problem_2"],
         im2=question["image_2_b64"],
         pb3=question["problem_3"],
+        comment_type=cmt["body_type"] if cmt else None,
+        comment_body=cmt["body"] if cmt else None,
         num=int(question["num_ans"]),
         opt=options,
     )
@@ -677,5 +703,16 @@ def answer_question(
         is_right=is_right,
     )
 
-    return AnswerQuestionResponse(result=is_right, right=right)
+    cur.execute(
+        "select body_type, body from study.comment where aid = %s and lid = %s and qid = %s",
+        (aid, body.lid, body.qid),
+    )
+    cmt = cur.fetchone()
+
+    return AnswerQuestionResponse(
+        result=is_right,
+        right=right,
+        comment_type=cmt["body_type"] if cmt else None,
+        comment_body=cmt["body"] if cmt else None,
+    )
 

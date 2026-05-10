@@ -8,6 +8,7 @@
 - 主な業務:
   - 講義/レクチャの階層管理 (`lectures`)
   - 設問管理 (`questions`)
+  - 設問ごとの解説 (`comment`)
   - 選択肢/正解管理 (`choice`, `answer`)
   - 回答履歴管理 (`exam`)
 - 全テーブルで`aid`(accounts.id)を保持し、アカウント単位でデータ分離する。
@@ -52,7 +53,20 @@
 - **外部キー**:
   - `(aid, lid) -> study.lectures(aid, id)`
 
-### 3. `study.choice` (選択肢)
+### 3. `study.comment` (設問解説)
+
+- **用途**: 設問1件につき解説本文を最大1件保持（任意。行が無い場合は解説なし）
+- **主キー**: `(aid, lid, qid)`
+- **主なカラム**:
+  - `aid`(int, not null): アカウントID
+  - `lid`(int, not null): レクチャID
+  - `qid`(int, not null): 設問ID
+  - `body_type`(text, not null): 解説本文のタイプ（例: `plane`, `tex`）
+  - `body`(text, not null): 解説本文
+- **外部キー**:
+  - `(aid, lid, qid) -> study.questions(aid, lid, id)`
+
+### 4. `study.choice` (選択肢)
 
 - **用途**: 設問ごとの選択肢を保持
 - **主キー**: `(aid, lid, qid, id)`
@@ -67,7 +81,7 @@
 - **外部キー**:
   - `(aid, lid, qid) -> study.questions(aid, lid, id)`
 
-### 4. `study.answer` (正解)
+### 5. `study.answer` (正解)
 
 - **用途**: 設問の正解選択肢IDを保持(複数正解対応)
 - **主キー**: `(aid, lid, qid, cid)`
@@ -79,7 +93,7 @@
 - **外部キー**:
   - `(aid, lid, qid, cid) -> study.choice(aid, lid, qid, id)`
 
-### 5. `study.exam` (出題・回答履歴)
+### 6. `study.exam` (出題・回答履歴)
 
 - **用途**: 回答実行時の出題履歴/正誤を保存
 - **主キー**: `(aid, lid, id)`
@@ -97,6 +111,7 @@
 ## リレーション要点
 
 - `lectures` 1 - N `questions`
+- `questions` 1 - 0..1 `comment`
 - `questions` 1 - N `choice`
 - `choice` 1 - 0..1 `answer` (正解として採用された場合)
 - `questions` 1 - N `exam` (回答履歴)

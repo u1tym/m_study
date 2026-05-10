@@ -108,6 +108,8 @@
   - `pb2`(string|null)
   - `im2`(string|null, base64)
   - `pb3`(string|null)
+  - `comment_type`(string|null, optional): 解説本文タイプ（`plane` / `tex`）。`comment_body` と両方省略可
+  - `comment_body`(string|null, optional): 解説本文。`comment_type` と両方省略可（**どちらか片方だけは不可**）
   - `choices`(array, 1件以上)
     - `typ`(string|null)
     - `opt`(string|null)
@@ -118,6 +120,7 @@
   - `num_ans = choicesでis_right=trueの件数`
   - `study.choice`を選択肢件数分追加
   - `study.answer`へ正解選択肢のみ追加
+  - 解説が指定されていれば `study.comment` に1行追加（`body_type`←`comment_type`, `body`←`comment_body`）
 - **Output(JSON)**:
   - `{ "result": true }`
 
@@ -127,6 +130,7 @@
   - `lid`(int)
   - `qid`(int)
 - **処理**:
+  - 対象設問の `study.comment` 行を削除（存在すれば）
   - `study.questions.is_deleted = true`
 - **Output(JSON)**:
   - `{ "result": true }`
@@ -136,8 +140,9 @@
 - **Input(JSON)**:
   - C-1と同等 + `qid`(更新対象)
 - **処理**:
+  - 既存設問の `study.comment` を削除（存在すれば）
   - 既存設問を`is_deleted=true`
-  - C-1相当の新規設問を作成(新`qid`)
+  - C-1相当の新規設問を作成(新`qid`)（解説指定時は新`qid`で `study.comment` に追加）
 - **Output(JSON)**:
   - `{ "result": true }`
 
@@ -158,8 +163,9 @@
 - **処理**:
   - `study.questions` 1件取得
   - `study.choice`を同`qid`で取得
+  - `study.comment` を同`(lid,qid)`で取得（無ければ解説フィールドは null）
 - **Output(JSON)**:
-  - `{"lid","ttl","pb1","im1","pb2","im2","pb3","num","opt":[{"cid","typ","opt","img","is_right"}...]}`（`is_right`: 当該選択肢が正解なら`true`）
+  - `{"lid","ttl","pb1","im1","pb2","im2","pb3","comment_type","comment_body","num","opt":[{"cid","typ","opt","img","is_right"}...]}`（`comment_*` は DB の `body_type` / `body`。解説が無い場合は `null`。`is_right`: 当該選択肢が正解なら`true`）
 
 ## D系 回答
 
@@ -177,7 +183,7 @@
     - `q_time = 現在時刻`
     - `is_right = 判定結果`
 - **Output(JSON)**:
-  - `{"result": <bool>, "right": [正解cid...]}`
+  - `{"result": <bool>, "right": [正解cid...], "comment_type": <string|null>, "comment_body": <string|null>}`（解説が無い設問では `comment_type` / `comment_body` は `null`）
 
 ## 実行方法
 

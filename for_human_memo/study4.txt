@@ -1,0 +1,29 @@
+以下のテーブルを追加しました。
+
+create table study.comment (
+  aid       integer not null,
+  lid       integer not null,
+  qid       integer not null,
+  
+  body_type text    not null,  -- 解説本文のタイプ(plane, tex)
+  body      text    not null,  -- 解説本文
+  
+  constraint fk_study_comment_aid_lid_qid
+    foreign key (aid, lid, qid) references study.questions(aid, lid, id),
+  primary key (aid, lid, qid)
+);
+
+study.questionsのレコード毎に、解説文を格納します。
+
+APIを修正して。
+C-1 設問作成で、解説本文タイプ、解説本文を追加して、study.commentに登録するようにして。
+同様に、C-3 設問更新で、更新できるようにして。
+また、C-5 設問取得で、解説本文タイプと解説本文を返すようにして。
+また、D-1 回答の戻りで、解説本文タイプと解説本文を返すようにして。
+
+API修正
+DB_STUDY.mdの修正
+API_STUDY.mdの修正
+をお願い
+
+
