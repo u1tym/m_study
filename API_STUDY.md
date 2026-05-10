@@ -108,6 +108,9 @@
   - `pb2`(string|null)
   - `im2`(string|null, base64)
   - `pb3`(string|null)
+  - `pb1_type`(string, optional, default `plane`): 設問 Part1 のタイプ（`plane` / `tex`）→ DB `problem_1_type`
+  - `pb2_type`(string|null, optional): 設問 Part2 のタイプ → DB `problem_2_type`
+  - `pb3_type`(string|null, optional): 設問 Part3 のタイプ → DB `problem_3_type`
   - `comment_type`(string|null, optional): 解説本文タイプ（`plane` / `tex`）。`comment_body` と両方省略可
   - `comment_body`(string|null, optional): 解説本文。`comment_type` と両方省略可（**どちらか片方だけは不可**）
   - `choices`(array, 1件以上)
@@ -165,7 +168,7 @@
   - `study.choice`を同`qid`で取得
   - `study.comment` を同`(lid,qid)`で取得（無ければ解説フィールドは null）
 - **Output(JSON)**:
-  - `{"lid","ttl","pb1","im1","pb2","im2","pb3","comment_type","comment_body","num","opt":[{"cid","typ","opt","img","is_right"}...]}`（`comment_*` は DB の `body_type` / `body`。解説が無い場合は `null`。`is_right`: 当該選択肢が正解なら`true`）
+  - `{"lid","ttl","pb1","im1","pb2","im2","pb3","pb1_type","pb2_type","pb3_type","comment_type","comment_body","num","opt":[{"cid","typ","opt","img","is_right"}...]}`（`pb*_type` は DB の `problem_*_type`。`comment_*` は `body_type` / `body`。解説が無い場合は `null`。`is_right`: 当該選択肢が正解なら`true`）
 
 ## D系 回答
 

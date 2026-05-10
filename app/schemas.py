@@ -53,6 +53,9 @@ class CreateQuestionRequest(BaseModel):
     pb2: str | None = None
     im2: str | None = None
     pb3: str | None = None
+    pb1_type: str = Field(default="plane", description="設問 Part1: plane / tex（DB: problem_1_type）")
+    pb2_type: str | None = Field(default=None, description="設問 Part2: plane / tex（DB: problem_2_type）")
+    pb3_type: str | None = Field(default=None, description="設問 Part3: plane / tex（DB: problem_3_type）")
     # 解説 → study.comment。省略時は行なし。指定時は comment_type / comment_body 両方必須。
     comment_type: str | None = None
     comment_body: str | None = None
@@ -106,6 +109,9 @@ class GetQuestionResponse(BaseModel):
     pb2: str | None
     im2: str | None
     pb3: str | None
+    pb1_type: str
+    pb2_type: str | None = None
+    pb3_type: str | None = None
     comment_type: str | None = None
     comment_body: str | None = None
     num: int

@@ -439,11 +439,28 @@ def _insert_question(
     cur_q = db.execute(
         """
         insert into study.questions (
-          aid, lid, id, title, problem_1, image_1_b64, problem_2, image_2_b64, problem_3, num_ans, is_deleted
+          aid, lid, id, title,
+          problem_1, image_1_b64, problem_2, image_2_b64, problem_3,
+          problem_1_type, problem_2_type, problem_3_type,
+          num_ans, is_deleted
         )
-        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, false)
+        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, false)
         """,
-        (aid, body.lid, qid, body.ttl, body.pb1, body.im1, body.pb2, body.im2, body.pb3, num_ans),
+        (
+            aid,
+            body.lid,
+            qid,
+            body.ttl,
+            body.pb1,
+            body.im1,
+            body.pb2,
+            body.im2,
+            body.pb3,
+            body.pb1_type,
+            body.pb2_type,
+            body.pb3_type,
+            num_ans,
+        ),
     )
 
     next_choice_id = _next_choice_id(db, aid, body.lid, qid)
@@ -537,6 +554,9 @@ def update_question(
         pb2=body.pb2,
         im2=body.im2,
         pb3=body.pb3,
+        pb1_type=body.pb1_type,
+        pb2_type=body.pb2_type,
+        pb3_type=body.pb3_type,
         comment_type=body.comment_type,
         comment_body=body.comment_body,
         choices=body.choices,
@@ -613,7 +633,10 @@ def get_question(
 
     cur.execute(
         """
-        select aid, lid, id, title, problem_1, image_1_b64, problem_2, image_2_b64, problem_3, num_ans
+        select aid, lid, id, title,
+               problem_1, image_1_b64, problem_2, image_2_b64, problem_3,
+               problem_1_type, problem_2_type, problem_3_type,
+               num_ans
           from study.questions
          where aid = %s and lid = %s and id = %s and is_deleted = false
         """,
@@ -661,6 +684,9 @@ def get_question(
         pb2=question["problem_2"],
         im2=question["image_2_b64"],
         pb3=question["problem_3"],
+        pb1_type=question["problem_1_type"],
+        pb2_type=question["problem_2_type"],
+        pb3_type=question["problem_3_type"],
         comment_type=cmt["body_type"] if cmt else None,
         comment_body=cmt["body"] if cmt else None,
         num=int(question["num_ans"]),

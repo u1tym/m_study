@@ -48,6 +48,9 @@
   - `problem_2`(text, null): 問題文2
   - `image_2_b64`(text, null): 画像2(Base64)
   - `problem_3`(text, null): 問題文3
+  - `problem_1_type`(text, not null, default `plane`): 問題文1の表示タイプ（例: `plane`, `tex`）
+  - `problem_2_type`(text, null): 問題文2の表示タイプ
+  - `problem_3_type`(text, null): 問題文3の表示タイプ
   - `num_ans`(int, not null): 正答数
   - `is_deleted`(bool, not null, default false): 論理削除
 - **外部キー**:
